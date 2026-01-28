@@ -1,0 +1,13 @@
+# Secret configuration files (where your tokens live)
+config.lua
+secrets.lua
+.env
+
+# Lua specific
+luac.out
+*.swp
+*.tmp
+
+# OS generated files
+.DS_Store
+thumbs.db
