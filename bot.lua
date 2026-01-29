@@ -1,10 +1,10 @@
 local socket = require("socket")
 local config = require("config")
-local commands = require("commands") -- Import the new module
+local commands = require("commands")
 
 -- Connect to Twitch
 local client = socket.tcp()
-client:settimeout(0.5) -- Keep the timeout
+client:settimeout(0.5)
 local ok, err = client:connect(config.server, config.port)
 
 if not ok then
@@ -24,16 +24,13 @@ while true do
 
 	if not line then
 		if err == "timeout" then
-			-- This is normal! Just go back to the top and try to receive again.
 			goto continue
 		else
-			-- This is a real error (connection lost)
 			print("Connection error: " .. err)
 			break
 		end
 	end
 
-	-- Process the line if we actually got one
 	if line:match("^PING") then
 		client:send("PONG :tmi.twitch.tv\r\n")
 	end

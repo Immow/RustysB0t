@@ -13,20 +13,18 @@ function Commands.handle(line, client, config)
 
 	local cmd_name = chat_message:lower():match("^!(%a+)")
 
-	-- 1. Get the command data from your map first
 	local cmd_data = command_map[cmd_name]
 
 	if cmd_data then
-		-- 2. Use cmd_data to get the module and specific cooldown
 		local on_cooldown, time_left = timer.is_on_cooldown(cmd_name, cmd_data.cooldown)
-		-- print(on_cooldown, time_left)
-
 		if on_cooldown then
-			-- Note: string.format helps keep these prints clean
+			-- Log the precise float to your CachyOS terminal for debugging
 			print(string.format("[Timer] %s is on cooldown: %.1fs left", cmd_name, time_left))
+
+			-- Send a cleaner, rounded version to Twitch chat
+			local chat_msg = string.format("Slow down! !%s is on cooldown (wait %.0fs).", cmd_name, time_left)
+			client:send("PRIVMSG " .. config.chan .. " :" .. chat_msg .. "\r\n")
 		else
-			print("cow")
-			-- 3. Access the module stored inside cmd_data
 			local output = cmd_data.module.get_info()
 			client:send("PRIVMSG " .. config.chan .. " :" .. output .. "\r\n")
 			print("[Bot] Sent: " .. output)
