@@ -1,25 +1,31 @@
 local timer = require("timer")
-
 local Commands = {}
 
--- Pass the client, config, and the specific spotify function into this module
-function Commands.handle(line, client, config, get_spotify_info)
-	-- Normalize the line to lowercase for easier matching
-	local message = line:lower()
+-- A table to map !command to its module file
+local command_map = {
+	song = require("modules.song")
+}
 
-	if message:match("!song") then
-		local on_cooldown, time_left = timer.is_on_cooldown("spotify", 10)
+function Commands.handle(line, client, config)
+	-- 1. Find the message part of the IRC line (after the second colon)
+	local chat_message = line:match("^:%w+!%w+@%w+%.tmi%.twitch%.tv PRIVMSG #%w+ :(.*)$")
+
+	if not chat_message then return end -- Not a chat message, ignore it
+
+	-- 2. Extract the command from the isolated chat message
+	local cmd_name = chat_message:lower():match("^!(%a+)")
+
+	if cmd_name and command_map[cmd_name] then
+		local on_cooldown, time_left = timer.is_on_cooldown(cmd_name, 10)
 
 		if on_cooldown then
-			print("[Timer] !song is on cooldown: " .. time_left .. "s left")
+			print("[Timer] " .. cmd_name .. " is on cooldown.")
 		else
-			local song_info = get_spotify_info()
-			client:send("PRIVMSG " .. config.chan .. " :" .. song_info .. "\r\n")
-			print("[Bot] Sent Song Info: " .. song_info)
+			local output = command_map[cmd_name].get_info()
+			client:send("PRIVMSG " .. config.chan .. " :" .. output .. "\r\n")
+			print("[Bot] Sent: " .. output)
 		end
 	end
-
-	-- You can easily add more commands here!
 end
 
 return Commands

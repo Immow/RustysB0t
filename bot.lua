@@ -3,24 +3,24 @@ local config = require("config")
 local commands = require("commands") -- Import the new module
 
 -- Function to grab live Spotify data via playerctl
-local function get_spotify_info()
-	local handle = io.popen("playerctl -p spotify metadata --format '{{title}} by {{artist}} 🎶 {{url}}' 2>/dev/null")
+-- local function get_spotify_info()
+-- 	local handle = io.popen("playerctl -p spotify metadata --format '{{title}} by {{artist}} 🎶 {{url}}' 2>/dev/null")
 
-	if not handle then
-		return "Error: Could not open pipe to playerctl."
-	end
+-- 	if not handle then
+-- 		return "Error: Could not open pipe to playerctl."
+-- 	end
 
-	local result = handle:read("*a")
-	handle:close()
+-- 	local result = handle:read("*a")
+-- 	handle:close()
 
-	-- Clean up the result and check if it's empty
-	if result == nil or result == "" then
-		return "Spotify is currently chilling (not playing)."
-	end
+-- 	-- Clean up the result and check if it's empty
+-- 	if result == nil or result == "" then
+-- 		return "Spotify is currently chilling (not playing)."
+-- 	end
 
-	-- Trim whitespace and return
-	return "Current Song: " .. result:gsub("^%s*(.-)%s*$", "%1")
-end
+-- 	-- Trim whitespace and return
+-- 	return "Current Song: " .. result:gsub("^%s*(.-)%s*$", "%1")
+-- end
 
 -- Connect to Twitch
 local client = socket.tcp()
@@ -53,7 +53,7 @@ while true do
 		client:send("PONG :tmi.twitch.tv\r\n")
 	end
 
-	commands.handle(line, client, config, get_spotify_info)
+	commands.handle(line, client, config)
 
 	::continue::
 end
