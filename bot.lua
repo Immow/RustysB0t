@@ -1,11 +1,11 @@
 local socket = require("socket")
 local config = require("config")
+local is_on_cooldown = require("timer")
 
 -- Function to grab live Spotify data via playerctl
 local function get_spotify_info()
 	local handle = io.popen("playerctl -p spotify metadata --format '{{title}} by {{artist}} 🎶 {{url}}' 2>/dev/null")
 
-	-- Check if handle exists before trying to read from it
 	if not handle then
 		return "Error: Could not open pipe to playerctl."
 	end
@@ -42,7 +42,6 @@ print("Bot is live on CachyOS! Listening for !song...")
 while true do
 	local line, err = client:receive()
 
-	-- *** FIX START ***
 	if not line then
 		-- If we get a timeout error, just continue the loop instead of breaking
 		if err == "timeout" then
@@ -55,22 +54,35 @@ while true do
 			break
 		end
 	end
-	-- *** FIX END ***
 
 	-- Respond to PINGs so Twitch doesn't kick the bot
 	if line:match("^PING") then
 		client:send("PONG :tmi.twitch.tv\r\n")
 	end
 
-	-- Listen for !song command
+
+	-- Example usage for your Spotify command
 	if line:match("!song") then
-		local song_info = get_spotify_info()
-		client:send("PRIVMSG " .. config.chan .. " :" .. song_info .. "\r\n")
-		print("Replied with: " .. song_info)
+		local on_cooldown, time_left = is_on_cooldown:is_on_cooldown("spotify", 10)
+
+		if on_cooldown then
+			print("Command !song is on cooldown. Wait " .. time_left .. "s")
+			-- Optional: client:send("PRIVMSG #chan :Slow down! Wait " .. time_left .. "s\r\n")
+		else
+			local song_info = get_spotify_info()
+			client:send("PRIVMSG " .. config.chan .. " :" .. song_info .. "\r\n")
+			print("Replied with: " .. song_info)
+		end
 	end
+
+	-- Listen for !song command
+	-- if line:match("!song") then
+	-- 	local song_info = get_spotify_info()
+	-- 	client:send("PRIVMSG " .. config.chan .. " :" .. song_info .. "\r\n")
+	-- 	print("Replied with: " .. song_info)
+	-- end
 
 	::continue::
 end
 
--- This line will only be reached if a critical connection error occurred
 print("Bot script terminated.")
