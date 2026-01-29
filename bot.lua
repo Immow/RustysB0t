@@ -2,29 +2,9 @@ local socket = require("socket")
 local config = require("config")
 local commands = require("commands") -- Import the new module
 
--- Function to grab live Spotify data via playerctl
--- local function get_spotify_info()
--- 	local handle = io.popen("playerctl -p spotify metadata --format '{{title}} by {{artist}} 🎶 {{url}}' 2>/dev/null")
-
--- 	if not handle then
--- 		return "Error: Could not open pipe to playerctl."
--- 	end
-
--- 	local result = handle:read("*a")
--- 	handle:close()
-
--- 	-- Clean up the result and check if it's empty
--- 	if result == nil or result == "" then
--- 		return "Spotify is currently chilling (not playing)."
--- 	end
-
--- 	-- Trim whitespace and return
--- 	return "Current Song: " .. result:gsub("^%s*(.-)%s*$", "%1")
--- end
-
 -- Connect to Twitch
 local client = socket.tcp()
-client:settimeout(10) -- Keep the timeout
+client:settimeout(0.5) -- Keep the timeout
 local ok, err = client:connect(config.server, config.port)
 
 if not ok then
@@ -43,12 +23,17 @@ while true do
 	local line, err = client:receive()
 
 	if not line then
-		if err == "timeout" then goto continue end
-		print("Connection error: " .. err)
-		break
+		if err == "timeout" then
+			-- This is normal! Just go back to the top and try to receive again.
+			goto continue
+		else
+			-- This is a real error (connection lost)
+			print("Connection error: " .. err)
+			break
+		end
 	end
 
-	-- Keep PING/PONG here as it's a protocol requirement, not a "command"
+	-- Process the line if we actually got one
 	if line:match("^PING") then
 		client:send("PONG :tmi.twitch.tv\r\n")
 	end
