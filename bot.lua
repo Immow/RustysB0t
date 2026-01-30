@@ -17,7 +17,7 @@ client:send("PASS " .. config.pass .. "\r\n")
 client:send("NICK " .. config.nick .. "\r\n")
 client:send("JOIN " .. config.chan .. "\r\n")
 
-print("Bot is live on CachyOS! Listening for !song...")
+print("Bot is live " .. os.date("%d-%m-%Y at %X"))
 
 while true do
 	local line, err = client:receive()

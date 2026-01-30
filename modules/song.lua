@@ -1,4 +1,8 @@
-local M = {}
+local M = {
+	cooldown = 10,
+	removable = false,
+	writeable = false
+}
 
 function M.get_info()
 	local handle = io.popen("playerctl -p spotify metadata --format '{{title}} by {{artist}} 🎶 {{url}}' 2>/dev/null")
