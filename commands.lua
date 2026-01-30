@@ -32,6 +32,21 @@ function Commands.handle(line, client, config)
 	local user, chat_message = line:match("display%-name=(%w+).+PRIVMSG #%w+ :(.*)$")
 	if not user or not chat_message then return end
 
+	-- HANDLE !COMMANDS LIST
+	if chat_message:lower():match("^!commands") then
+		local list = {}
+		for name, _ in pairs(command_map) do
+			table.insert(list, "!" .. name)
+		end
+
+		-- Sort them alphabetically so the list is clean
+		table.sort(list)
+
+		local output = "Available commands: " .. table.concat(list, ", ")
+		client:send("PRIVMSG " .. config.chan .. " :" .. output .. "\r\n")
+		return
+	end
+
 	-- HANDLE !ADD COMMAND
 	local new_cmd, new_text = chat_message:match("^!add (%w+) (.+)$")
 	if new_cmd and has_permission then
@@ -48,13 +63,13 @@ function Commands.handle(line, client, config)
 		if f then
 			f:write(string.format([[
 local M = {
-    cooldown = 10,
+    cooldown = 30,
     removable = true,
     writeable = true
 }
 
 function M.get_info()
-    return "%s"
+    return %q
 end
 
 return M
@@ -92,6 +107,9 @@ return M
 			client:send("PRIVMSG " .. config.chan .. " :" .. output .. "\r\n")
 		else
 			print(string.format("[Timer] %s busy (%.1fs)", cmd_name, time_left))
+
+			local chat_msg = string.format("Command !%s is on cooldown. Try again in %.1f seconds.", cmd_name, time_left)
+			client:send("PRIVMSG " .. config.chan .. " :" .. chat_msg .. "\r\n")
 		end
 	end
 end
