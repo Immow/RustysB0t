@@ -21,6 +21,17 @@ if handle then
 	handle:close()
 end
 
+function Commands.check_timers(client, config)
+	local poll = command_map["poll"]
+	if poll and poll.current_poll and poll.current_poll.active then
+		-- Check if current time has passed the end time
+		if os.time() >= poll.current_poll.ends_at then
+			local results = poll.get_results() -- This also sets active = false
+			client:send("PRIVMSG " .. config.chan .. " :[Timer] " .. results .. "\r\n")
+		end
+	end
+end
+
 function Commands.handle(line, client, config)
 	-- Parse Tagged IRC Line
 	-- Tags contain mod=1 or badges=broadcaster/1
@@ -45,6 +56,42 @@ function Commands.handle(line, client, config)
 		local output = "Available commands: " .. table.concat(list, ", ")
 		client:send("PRIVMSG " .. config.chan .. " :" .. output .. "\r\n")
 		return
+	end
+
+	-- Inside Commands.handle(line, client, config)
+
+	-- 1. START POLL (Broadcaster/Mod only)
+	local poll_input = chat_message:match("^!poll (.+)")
+	if poll_input and has_permission then
+		local poll_mod = command_map["poll"]
+		if poll_mod then
+			local response = poll_mod.start(poll_input, user)
+			client:send("PRIVMSG " .. config.chan .. " :" .. response .. "\r\n")
+			return
+		end
+	end
+
+	-- 2. VOTE (Any user)
+	local vote_input = chat_message:match("^!vote (%d+)")
+	if vote_input then
+		local poll_mod = command_map["poll"]
+		if poll_mod then
+			poll_mod.vote(vote_input, user)
+			-- We don't send a message back to avoid spam,
+			-- but you can print to your CachyOS terminal:
+			-- print("[Poll] " .. user .. " voted for " .. vote_input)
+			return
+		end
+	end
+
+	-- 3. END POLL & SHOW RESULTS (Broadcaster/Mod only)
+	if chat_message:match("^!pollend") and has_permission then
+		local poll_mod = command_map["poll"]
+		if poll_mod then
+			local results = poll_mod.get_results()
+			client:send("PRIVMSG " .. config.chan .. " :" .. results .. "\r\n")
+			return
+		end
 	end
 
 	-- HANDLE !ADD COMMAND

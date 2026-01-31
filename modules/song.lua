@@ -1,5 +1,5 @@
 local M = {
-	cooldown = 10,
+	cooldown = 30,
 	removable = false,
 	writeable = false
 }
