@@ -1,6 +1,7 @@
 local socket = require("socket")
 local config = require("config")
 local commands = require("commands")
+local secrets = require("secrets") -- Loads the sensitive table
 
 local client = socket.tcp()
 client:settimeout(0.5)
@@ -12,7 +13,7 @@ if not ok then
 end
 
 -- Login
-client:send("PASS " .. config.pass .. "\r\n")
+client:send("PASS " .. secrets.pass .. "\r\n")
 client:send("NICK " .. config.nick .. "\r\n")
 client:send("CAP REQ :twitch.tv/tags\r\n")
 client:send("JOIN " .. config.chan .. "\r\n")

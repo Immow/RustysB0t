@@ -11,9 +11,11 @@ M.users = {}
 function M.load()
 	local f = loadfile(M.data_path)
 	if f then
-		M.users = f() or {}
+		local ok, data = pcall(f)
+		M.users = ok and data or {}
 	else
 		M.users = {}
+		M.save()
 	end
 end
 
@@ -27,12 +29,13 @@ function M.save()
 		end
 		f:write("}")
 		f:close()
+	else
+		print("[Error] Could not write to " .. M.data_path)
 	end
 end
 
 function M.add(user, amount)
 	M.users[user] = (M.users[user] or 0) + amount
-	-- Auto-save occasionally or on every add for safety
 	M.save()
 end
 
@@ -40,7 +43,6 @@ function M.get_balance(user)
 	return M.users[user] or 0
 end
 
--- Initialize on load
 M.load()
 
 return M

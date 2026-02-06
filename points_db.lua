@@ -1,3 +1,4 @@
 return {
-  ["rustyd0ge"] = 20,
+  ["Flying"] = 2,
+  ["rustyd0ge"] = 36,
 }

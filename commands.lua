@@ -1,6 +1,5 @@
 local timer = require("timer")
 local Commands = {}
--- loaded command modules
 local command_map = {}
 
 -- ==========================================================
@@ -54,16 +53,22 @@ end
 -- !poll, !vote, !pollend
 function Handlers.handle_poll(action, input, user, client, config, has_perm)
 	local poll_mod = command_map["poll"]
-	if not poll_mod then return end
+	local points_mod = command_map["points"]       -- Retrieve the points module here
+
+	if not poll_mod or not points_mod then return end -- Ensure both exist
 
 	if action == "start" and has_perm then
 		local response = poll_mod.start(input, user)
 		client:send("PRIVMSG " .. config.chan .. " :" .. response .. "\r\n")
 	elseif action == "vote" then
-		poll_mod.vote(input, user)
-		print("[Poll] " .. user .. " cast vote: " .. input)
+		-- Pass points_mod so poll.lua can check balances
+		local err = poll_mod.vote(input, user, points_mod)
+		if err then
+			client:send("PRIVMSG " .. config.chan .. " :" .. user .. ": " .. err .. "\r\n")
+		end
 	elseif action == "end" and has_perm then
-		local results = poll_mod.get_results()
+		-- Pass points_mod so poll.lua can pay out winners
+		local results = poll_mod.get_results(points_mod)
 		client:send("PRIVMSG " .. config.chan .. " :" .. results .. "\r\n")
 	end
 end
@@ -111,9 +116,11 @@ end
 
 function Commands.check_timers(client, config)
 	local poll = command_map["poll"]
+	local points = command_map["points"] -- Add this
 	if poll and poll.current_poll and poll.current_poll.active then
 		if os.time() >= poll.current_poll.ends_at then
-			client:send("PRIVMSG " .. config.chan .. " :[Timer] " .. poll.get_results() .. "\r\n")
+			-- Pass points to get_results for auto-payouts
+			client:send("PRIVMSG " .. config.chan .. " :[Timer] " .. poll.get_results(points) .. "\r\n")
 		end
 	end
 end
@@ -127,21 +134,20 @@ function Commands.handle(line, client, config)
 	local user, msg = line:match("display%-name=(%w+).+PRIVMSG #%w+ :(.*)$")
 	if not user or not msg then return end
 
-	-- 2. Grant Points for Chatting
+	-- 2. Grant points for every message sent in chat
 	local points_mod = command_map["points"]
 	if points_mod then
-		points_mod.add(user, 10)
+		points_mod.add(user, config.points)
 	end
 
 	-- 3. Capture Inputs for Routing
+	local msg_lower = msg:lower()
 	local poll_start_input = msg:match("^!poll (.+)")
-	local vote_input = msg:match("^!vote (%d+)")
+	local vote_input = msg:match("^!vote (.+)") -- Capture full string for betting logic
 	local add_cmd, add_text = msg:match("^!add (%w+) (.+)")
 	local remove_name = msg:match("^!remove (%w+)")
 
 	-- 4. Route Internal/Management Commands
-	local msg_lower = msg:lower()
-
 	if msg_lower:match("^!commands") then
 		local ok, time_left = timer.is_on_cooldown("list_commands", 10)
 		if not ok then
@@ -151,16 +157,15 @@ function Commands.handle(line, client, config)
 			client:send("PRIVMSG " .. config.chan .. " :" .. cooldown_msg .. "\r\n")
 		end
 		return
+
+		-- NEW: Route for checking user points balance
 	elseif msg_lower:match("^!points") then
-		local ok, _ = timer.is_on_cooldown("check_points", 5)
-		if not ok then
-			if points_mod then
-				local balance = points_mod.get_balance(user)
-				client:send("PRIVMSG " .. config.chan .. " :" .. user .. ", you have " .. balance .. " points! 💰\r\n")
-			end
+		if points_mod then
+			local balance = points_mod.get_balance(user)
+			client:send("PRIVMSG " .. config.chan .. " :" .. user .. ", you have " .. balance .. " points! 💰\r\n")
 		end
 		return
-	elseif msg:match("^!pollend") then
+	elseif msg_lower:match("^!pollend") then
 		Handlers.handle_poll("end", nil, user, client, config, has_perm)
 		return
 	elseif poll_start_input then
@@ -184,7 +189,10 @@ function Commands.handle(line, client, config)
 		if cmd_data then
 			local ok, time_left = timer.is_on_cooldown(cmd_name, cmd_data.cooldown or 5)
 			if not ok then
-				client:send("PRIVMSG " .. config.chan .. " :" .. cmd_data.get_info() .. "\r\n")
+				-- Check if the module actually has a get_info function
+				if cmd_data.get_info then
+					client:send("PRIVMSG " .. config.chan .. " :" .. cmd_data.get_info() .. "\r\n")
+				end
 			else
 				local cooldown_msg = string.format("Command !%s is on cooldown (%.1fs left).", cmd_name, time_left)
 				client:send("PRIVMSG " .. config.chan .. " :" .. cooldown_msg .. "\r\n")
