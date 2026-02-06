@@ -1,0 +1,3 @@
+return {
+	pass = "oauth:yourTokenHere",
+}
