@@ -1,5 +1,6 @@
 local timer = require("timer")
 local Commands = {}
+-- loaded command modules
 local command_map = {}
 
 -- ==========================================================
@@ -126,14 +127,22 @@ function Commands.handle(line, client, config)
 	local user, msg = line:match("display%-name=(%w+).+PRIVMSG #%w+ :(.*)$")
 	if not user or not msg then return end
 
-	-- 2. Capture Inputs for Routing
+	-- 2. Grant Points for Chatting
+	local points_mod = command_map["points"]
+	if points_mod then
+		points_mod.add(user, 10)
+	end
+
+	-- 3. Capture Inputs for Routing
 	local poll_start_input = msg:match("^!poll (.+)")
 	local vote_input = msg:match("^!vote (%d+)")
 	local add_cmd, add_text = msg:match("^!add (%w+) (.+)")
 	local remove_name = msg:match("^!remove (%w+)")
 
-	-- 3. Route Internal/Management Commands
-	if msg:lower():match("^!commands") then
+	-- 4. Route Internal/Management Commands
+	local msg_lower = msg:lower()
+
+	if msg_lower:match("^!commands") then
 		local ok, time_left = timer.is_on_cooldown("list_commands", 10)
 		if not ok then
 			Handlers.list_commands(client, config)
@@ -142,8 +151,15 @@ function Commands.handle(line, client, config)
 			client:send("PRIVMSG " .. config.chan .. " :" .. cooldown_msg .. "\r\n")
 		end
 		return
-
-		-- Handle !pollend BEFORE !poll to prevent pattern overlap
+	elseif msg_lower:match("^!points") then
+		local ok, _ = timer.is_on_cooldown("check_points", 5)
+		if not ok then
+			if points_mod then
+				local balance = points_mod.get_balance(user)
+				client:send("PRIVMSG " .. config.chan .. " :" .. user .. ", you have " .. balance .. " points! 💰\r\n")
+			end
+		end
+		return
 	elseif msg:match("^!pollend") then
 		Handlers.handle_poll("end", nil, user, client, config, has_perm)
 		return
@@ -160,9 +176,9 @@ function Commands.handle(line, client, config)
 		Handlers.remove_command(remove_name, client, config)
 		return
 
-		-- 4. Route Standard Dynamic Commands
+		-- 5. Route Standard Dynamic Commands
 	else
-		local cmd_name = msg:lower():match("^!(%a+)")
+		local cmd_name = msg_lower:match("^!(%a+)")
 		local cmd_data = command_map[cmd_name]
 
 		if cmd_data then
