@@ -73,6 +73,19 @@ function Handlers.handle_poll(action, input, user, client, config, has_perm)
 	end
 end
 
+-- !ban <user> [reason]
+function Handlers.handle_ban(target, reason, client, config)
+	if not target then return end
+
+	local ban_cmd = "/ban " .. target
+	if reason and reason ~= "" then
+		ban_cmd = ban_cmd .. " " .. reason
+	end
+
+	client:send("PRIVMSG " .. config.chan .. " :" .. ban_cmd .. "\r\n")
+	print("[Mod] Banned user: " .. target .. (reason and (" for: " .. reason) or ""))
+end
+
 -- !add
 function Handlers.add_command(name, text, client, config)
 	local target = name:lower()
@@ -132,6 +145,7 @@ function Commands.handle(line, client, config)
 	local has_perm = is_mod or is_broadcaster
 
 	local user, msg = line:match("display%-name=(%w+).+PRIVMSG #%w+ :(.*)$")
+	local ban_user, ban_reason = msg:match("^!ban (%w+)%s*(.*)")
 	if not user or not msg then return end
 
 	-- 2. Grant points for every message sent in chat
@@ -173,6 +187,9 @@ function Commands.handle(line, client, config)
 		return
 	elseif vote_input then
 		Handlers.handle_poll("vote", vote_input, user, client, config, has_perm)
+		return
+	elseif ban_user and has_perm then
+		Handlers.handle_ban(ban_user, ban_reason, client, config)
 		return
 	elseif add_cmd and add_text and has_perm then
 		Handlers.add_command(add_cmd, add_text, client, config)
