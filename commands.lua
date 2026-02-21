@@ -145,8 +145,9 @@ function Commands.handle(line, client, config)
 	local has_perm = is_mod or is_broadcaster
 
 	local user, msg = line:match("display%-name=(%w+).+PRIVMSG #%w+ :(.*)$")
-	local ban_user, ban_reason = msg:match("^!ban (%w+)%s*(.*)")
 	if not user or not msg then return end
+	local msg_lower = msg:lower()
+	local ban_user, ban_reason = msg:match("^!ban (%w+)%s*(.*)")
 
 	-- 2. Grant points for every message sent in chat
 	local points_mod = command_map["points"]
@@ -155,7 +156,6 @@ function Commands.handle(line, client, config)
 	end
 
 	-- 3. Capture Inputs for Routing
-	local msg_lower = msg:lower()
 	local poll_start_input = msg:match("^!poll (.+)")
 	local vote_input = msg:match("^!vote (.+)") -- Capture full string for betting logic
 	local add_cmd, add_text = msg:match("^!add (%w+) (.+)")
